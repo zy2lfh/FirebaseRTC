@@ -17,6 +17,7 @@ let localStream = null;
 let remoteStream = null;
 let roomDialog = null;
 let roomId = null;
+let mainCanvas = null;
 
 function init() {
   document.querySelector('#cameraBtn').addEventListener('click', openUserMedia);
@@ -24,6 +25,7 @@ function init() {
   document.querySelector('#createBtn').addEventListener('click', createRoom);
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
   roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
+  mainCanvas = document.querySelector('#mainCanvas');
 }
 
 async function createRoom() {
@@ -38,10 +40,13 @@ async function createRoom() {
   registerPeerConnectionListeners();
 
   const dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
-  const mainCanvas = document.querySelector('#mainCanvas');
   mainCanvas.addEventListener('click', event => {
     console.log('Got click on the canvas!');
-    dataChannel.send("clicked!");
+    var ctx = mainCanvas.getContext("2d");
+    ctx.moveTo(0, 0);
+    ctx.lineTo(200, 100);
+    ctx.stroke();
+    dataChannel.send(mainCanvas.toDataURL());
   })
 
 /*
@@ -147,6 +152,12 @@ async function joinRoomById(roomId) {
     dataChannel.addEventListener('message', event => {
         const message = event.data;
         console.log("got message!:", message);
+        var img = new Image();
+        img.onload = function() {
+            mainCanvas.getContext("2d").drawImage(img, 0, 0);
+        };
+
+        img.src = message;
     });
 
     /*
