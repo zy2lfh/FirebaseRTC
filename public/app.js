@@ -16,6 +16,8 @@ let peerConnection = null;
 let roomDialog = null;
 let roomId = null;
 let mainCanvas = null;
+let mouseReleased = true;
+let dataChannel = null;
 
 function init() {
   document.querySelector('#hangupBtn').addEventListener('click', hangUp);
@@ -23,6 +25,9 @@ function init() {
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
   roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
   mainCanvas = document.querySelector('#mainCanvas');
+  document.addEventListener('mousedown', onMouseDown, false);
+  document.addEventListener('mouseup', onMouseUp, false);
+  document.addEventListener('mousemove', onMouseMove, false);
 }
 
 async function createRoom() {
@@ -37,7 +42,8 @@ async function createRoom() {
 
   registerPeerConnectionListeners();
 
-  const dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
+  dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
+  /*
   mainCanvas.addEventListener('click', event => {
     console.log('Got click on the canvas!');
     var ctx = mainCanvas.getContext("2d");
@@ -46,6 +52,7 @@ async function createRoom() {
     ctx.stroke();
     dataChannel.send(mainCanvas.toDataURL());
   })
+  */
 
   // Code for collecting ICE candidates below
   const callerCandidatesCollection = roomRef.collection('callerCandidates');
@@ -128,7 +135,7 @@ async function joinRoomById(roomId) {
     peerConnection = new RTCPeerConnection(configuration);
     registerPeerConnectionListeners();
 
-    const dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
+    dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
 
     // Append new messages to the box of incoming messages
     dataChannel.addEventListener('message', event => {
@@ -243,6 +250,29 @@ function generateRoomId() {
     roomId += randomChar;
   }
   return roomId;
+}
+
+function onMouseDown() {
+  console.log("onMouseDown");
+  mouseReleased = false;
+}
+
+function onMouseUp() {
+  console.log("onMouseUp");
+  mouseReleased = true;
+}
+
+function onMouseMove(e) {
+  console.log("onMouseMove. is released? ", mouseReleased);
+  if (!mouseReleased) {
+      var ctx = mainCanvas.getContext("2d");
+      ctx.beginPath();
+      ctx.arc(e.clientX, e.clientY, 7.5, 0, Math.PI * 2, false);
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#777";
+      ctx.stroke();
+      dataChannel.send(mainCanvas.toDataURL());
+  }
 }
 
 init();
