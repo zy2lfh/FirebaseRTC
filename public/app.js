@@ -18,6 +18,8 @@ let roomId = null;
 let mainCanvas = null;
 let mouseReleased = true;
 let dataChannel = null;
+let canvasX = null;
+let canvasY = null;
 
 function init() {
   document.querySelector('#hangupBtn').addEventListener('click', hangUp);
@@ -25,6 +27,8 @@ function init() {
   document.querySelector('#joinBtn').addEventListener('click', joinRoom);
   roomDialog = new mdc.dialog.MDCDialog(document.querySelector('#room-dialog'));
   mainCanvas = document.querySelector('#mainCanvas');
+  canvasX = mainCanvas.getBoundingClientRect().left;
+  canvasY = mainCanvas.getBoundingClientRect().top;
   document.addEventListener('mousedown', onMouseDown, false);
   document.addEventListener('mouseup', onMouseUp, false);
   document.addEventListener('mousemove', onMouseMove, false);
@@ -267,7 +271,7 @@ function onMouseMove(e) {
   if (!mouseReleased) {
       var ctx = mainCanvas.getContext("2d");
       ctx.beginPath();
-      ctx.arc(e.clientX, e.clientY, 7.5, 0, Math.PI * 2, false);
+      ctx.arc(e.clientX - canvasX, e.clientY - canvasY, 7.5, 0, Math.PI * 2, false);
       ctx.lineWidth = 5;
       ctx.strokeStyle = "#777";
       ctx.stroke();
