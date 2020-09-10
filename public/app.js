@@ -32,7 +32,8 @@ async function createRoom() {
   document.querySelector('#createBtn').disabled = true;
   document.querySelector('#joinBtn').disabled = true;
   const db = firebase.firestore();
-  const roomRef = await db.collection('rooms').doc();
+  const newRoomId = generateRoomId();
+  const roomRef = await db.collection('rooms').doc(newRoomId);
 
   console.log('Create PeerConnection with configuration: ', configuration);
   peerConnection = new RTCPeerConnection(configuration);
@@ -292,6 +293,18 @@ function registerPeerConnectionListeners() {
     console.log(
         `ICE connection state change: ${peerConnection.iceConnectionState}`);
   });
+}
+
+// Util functions
+
+function generateRoomId() {
+  var roomId = "";
+  for (i = 0; i < 4; i++) {
+    var randomInt = Math.floor(Math.random() * Math.floor(26));
+    var randomChar = String.fromCharCode(65 + randomInt);
+    roomId += randomChar;
+  }
+  return roomId;
 }
 
 init();
