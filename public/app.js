@@ -17,7 +17,7 @@ let roomDialog = null;
 let roomId = null;
 let mainCanvas = null;
 let mouseReleased = true;
-let dataChannel = null;
+let dataChannelSet = new Set();
 let canvasX = null;
 let canvasY = null;
 
@@ -47,16 +47,7 @@ async function createRoom() {
   registerPeerConnectionListeners();
 
   dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
-  /*
-  mainCanvas.addEventListener('click', event => {
-    console.log('Got click on the canvas!');
-    var ctx = mainCanvas.getContext("2d");
-    ctx.moveTo(0, 0);
-    ctx.lineTo(200, 100);
-    ctx.stroke();
-    dataChannel.send(mainCanvas.toDataURL());
-  })
-  */
+  dataChannelSet.add(dataChannel);
 
   // Code for collecting ICE candidates below
   const callerCandidatesCollection = roomRef.collection('callerCandidates');
@@ -275,7 +266,9 @@ function onMouseMove(e) {
       ctx.lineWidth = 5;
       ctx.strokeStyle = "#777";
       ctx.stroke();
-      dataChannel.send(mainCanvas.toDataURL());
+      dataChannelSet.forEach(async (dataChannelValue1, dataChannelValue2) => {
+        await dataChannelValue1.send(mainCanvas.toDataURL());
+      });
   }
 }
 
