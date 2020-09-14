@@ -41,10 +41,14 @@ async function createRoom() {
   const newRoomId = generateRoomId();
   const roomRef = await db.collection('rooms').doc(newRoomId);
 
+  await createNewPair(roomRef);
+}
+
+async function createNewPair(roomRef) {
   console.log('Create PeerConnection with configuration: ', configuration);
   peerConnection = new RTCPeerConnection(configuration);
 
-  registerPeerConnectionListeners();
+  registerPeerConnectionListeners(peerConnection);
 
   dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
   dataChannelSet.add(dataChannel);
@@ -62,7 +66,7 @@ async function createRoom() {
   });
   // Code for collecting ICE candidates above
 
-  // Code for creating a room below
+  // Code for creating a pair below
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(offer);
   console.log('Created offer:', offer);
@@ -78,7 +82,7 @@ async function createRoom() {
   console.log(`New room created with SDP offer. Room ID: ${roomRef.id}`);
   document.querySelector(
       '#currentRoom').innerText = `Current room is ${roomRef.id} - You are the caller!`;
-  // Code for creating a room above
+  // Code for creating a pair above
 
   // Listening for remote session description below
   roomRef.onSnapshot(async snapshot => {
@@ -87,6 +91,8 @@ async function createRoom() {
       console.log('Got remote description: ', data.answer);
       const rtcSessionDescription = new RTCSessionDescription(data.answer);
       await peerConnection.setRemoteDescription(rtcSessionDescription);
+      await cleanUpIceCandidates(roomRef);
+      await createNewPair(roomRef);
     }
   });
   // Listening for remote session description above
@@ -128,7 +134,7 @@ async function joinRoomById(roomId) {
   if (roomSnapshot.exists) {
     console.log('Create PeerConnection with configuration: ', configuration);
     peerConnection = new RTCPeerConnection(configuration);
-    registerPeerConnectionListeners();
+    registerPeerConnectionListeners(peerConnection);
 
     dataChannel = peerConnection.createDataChannel('canvas', {negotiated: true, id: 0});
 
@@ -187,6 +193,17 @@ async function joinRoomById(roomId) {
   }
 }
 
+async function cleanUpIceCandidates(roomRef) {
+  const calleeCandidates = await roomRef.collection('calleeCandidates').get();
+  calleeCandidates.forEach(async candidate => {
+    await candidate.ref.delete();
+  });
+  const callerCandidates = await roomRef.collection('callerCandidates').get();
+  callerCandidates.forEach(async candidate => {
+    await candidate.ref.delete();
+  });
+}
+
 async function hangUp(e) {
   if (peerConnection) {
     peerConnection.close();
@@ -201,21 +218,14 @@ async function hangUp(e) {
   if (roomId) {
     const db = firebase.firestore();
     const roomRef = db.collection('rooms').doc(roomId);
-    const calleeCandidates = await roomRef.collection('calleeCandidates').get();
-    calleeCandidates.forEach(async candidate => {
-      await candidate.ref.delete();
-    });
-    const callerCandidates = await roomRef.collection('callerCandidates').get();
-    callerCandidates.forEach(async candidate => {
-      await candidate.ref.delete();
-    });
+    await cleanUpIceCandidates(roomRef);
     await roomRef.delete();
   }
 
   document.location.reload(true);
 }
 
-function registerPeerConnectionListeners() {
+function registerPeerConnectionListeners(peerConnection) {
   peerConnection.addEventListener('icegatheringstatechange', () => {
     console.log(
         `ICE gathering state changed: ${peerConnection.iceGatheringState}`);
@@ -267,7 +277,9 @@ function onMouseMove(e) {
       ctx.strokeStyle = "#777";
       ctx.stroke();
       dataChannelSet.forEach(async (dataChannelValue1, dataChannelValue2) => {
-        await dataChannelValue1.send(mainCanvas.toDataURL());
+        if (dataChannelValue1.readyState === "open") {
+          await dataChannelValue1.send(mainCanvas.toDataURL());
+        }
       });
   }
 }
